@@ -1,0 +1,75 @@
+[package]
+name = "stef"
+version = "0.1.0"
+edition = "2024"
+authors = ["Miguel Jacq"]
+rust-version = "1.88"
+description = "Standalone SOPS-aware grep with encrypted match history"
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://git.mig5.net/mig5/stef"
+keywords = ["grep", "ripgrep", "sops", "secrets", "search"]
+categories = ["command-line-utilities", "filesystem"]
+include = [
+    "/src/**",
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/README.md",
+    "/LICENSE",
+    "/man/**",
+    "/rust-toolchain.toml",
+]
+
+[[bin]]
+name = "stef"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+blake3 = "1"
+chacha20poly1305 = "0.10"
+clap = { version = "4", features = ["derive", "env"] }
+getrandom = { version = "0.2", features = ["std"] }
+globset = "=0.4.18"
+grep-matcher = "=0.1.8"
+grep-regex = "=0.1.14"
+grep-searcher = "=0.1.17"
+ignore = "=0.4.33"
+regex = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[package.metadata.deb]
+maintainer = "stef contributors"
+section = "utils"
+priority = "optional"
+extended-description = """
+stef is a standalone search tool built from ripgrep's reusable Rust
+crates. It transparently decrypts SOPS files while searching and can retain
+only matched lines in encrypted local history for historical/pass comparisons.
+SOPS and GnuPG are optional runtime integrations, not mandatory dependencies.
+"""
+assets = [
+  ["target/release/stef", "usr/bin/", "755"],
+  ["README.md", "usr/share/doc/stef/README.md", "644"],
+  ["LICENSE", "usr/share/doc/stef/LICENSE", "644"],
+  ["man/stef.1", "usr/share/man/man1/stef.1", "644"],
+]
+
+[package.metadata.generate-rpm]
+require-sh = false
+assets = [
+  { source = "target/release/stef", dest = "/usr/bin/stef", mode = "755" },
+  { source = "README.md", dest = "/usr/share/doc/stef/README.md", mode = "644", doc = true },
+  { source = "LICENSE", dest = "/usr/share/doc/stef/LICENSE", mode = "644", doc = true },
+  { source = "man/stef.1", dest = "/usr/share/man/man1/stef.1", mode = "644", doc = true },
+]

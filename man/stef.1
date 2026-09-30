@@ -1,0 +1,179 @@
+.TH STEF 1 "September 2026" "stef 0.1.0" "User Commands"
+.SH NAME
+stef \- SOPS-aware grep with encrypted match history
+.SH SYNOPSIS
+.B stef
+.RI [ OPTIONS ] " PATTERN " [ PATH ...]
+.br
+.B stef
+.RI [ OPTIONS ] " -e PATTERN " [ PATH ...]
+.br
+.B stef -p
+.RI [ DURATION ] " [PATTERN [PATH ...]]"
+.SH DESCRIPTION
+.B stef
+is a standalone search tool built with reusable Rust crates from the
+ripgrep project. It searches ordinary files directly and transparently invokes
+.B sops --decrypt FILE
+for SOPS-encrypted files. Decrypted contents are searched from a pipe and are
+not written to a stef temporary file.
+.PP
+Normal searches can be retained as encrypted match-only snapshots. Pass mode
+compares the current result with earlier snapshots and renders disappeared
+matches as removals and new matches as additions.
+.SH COMMON SEARCH OPTIONS
+.TP
+.BR -e ", " --regexp " PATTERN"
+Add a search pattern. Repeatable.
+.TP
+.BR -f ", " --file " FILE"
+Read patterns from FILE, one per line.
+.TP
+.BR -F ", " --fixed-strings
+Treat patterns literally.
+.TP
+.BR -i ", " --ignore-case
+Case-insensitive search.
+.TP
+.BR -S ", " --smart-case
+Ignore case unless an uppercase literal appears in the pattern.
+.TP
+.BR -w ", " --word-regexp
+Require word-boundary matches.
+.TP
+.BR -x ", " --line-regexp
+Match complete lines.
+.TP
+.BR -v ", " --invert-match
+Report non-matching lines.
+.TP
+.BR -U ", " --multiline
+Permit matches across line boundaries.
+.TP
+.BR -A " N, " -B " N, " -C " N"
+Show after, before, or surrounding context.
+.TP
+.BR -r ", " --recursive
+Recurse into directory operands. Without -r or -R, directory operands are not searched.
+.TP
+.B -R
+Recursive search and follow symbolic links (GNU grep-compatible behaviour).
+.TP
+.BR -u ", " --unrestricted
+Relax filters. -u disables ignore rules; -uu also includes hidden paths;
+-uuu also searches binary-looking data as text.
+.TP
+.BR -g ", " --glob " GLOB"
+Apply an override glob.
+.TP
+.BR -t ", " --type " TYPE"
+Search a named file type.
+.TP
+.BR -T ", " --type-not " TYPE"
+Exclude a named file type.
+.TP
+.B --hidden
+Search hidden files and directories.
+.TP
+.B --no-ignore
+Disable ignore-file filtering.
+.TP
+.B --follow
+Follow symbolic links.
+.SH SOPS OPTIONS
+.TP
+.BI --sops-glob " GLOB"
+Add a filename glob to the SOPS candidate set.
+.TP
+.B --no-sops
+Disable SOPS probing/decryption.
+.PP
+The SOPS executable defaults to
+.B sops
+and can be overridden with
+.BR STEF_SOPS .
+.SH HISTORY AND PASS MODE
+.TP
+.BR -p ", " --pass
+Compare the current result with the most recent distinct previous match state.
+With no PATTERN/PATH, rerun the most recently remembered search from its
+original working directory.
+.TP
+.BI -p " 7d"
+Compare against all historical matches seen for the same search within a time
+window. Supported suffixes are m, h, d and w.
+.TP
+.B --no-history
+Do not retain this run.
+.TP
+.B --history
+List recent remembered commands and metadata. Stored match text is not printed.
+.TP
+.B --clear-history
+Delete snapshots and compact the history database.
+.TP
+.BI --history-gpg-recipient " KEY"
+Wrap the stef history master key to a local GPG secret key. Repeatable.
+.SH OUTPUT OPTIONS
+.TP
+.BR -N ", " --no-line-number
+Suppress line numbers.
+.TP
+.BR -o ", " --only-matching
+Print only matching substrings.
+.TP
+.BR -c ", " --count
+Print matching-line counts per file.
+.TP
+.B --count-matches
+Print submatch counts per file.
+.TP
+.BR -l ", " --files-with-matches
+Print matching filenames only.
+.TP
+.BR -L ", " --files-without-match
+Print non-matching filenames only.
+.TP
+.BR -q ", " --quiet
+Suppress normal output and use the exit status.
+.TP
+.B --json
+Emit newline-delimited JSON match and summary records.
+.TP
+.B --vimgrep
+Print path:line:column:text.
+.TP
+.BI --color " auto|always|never"
+Control ANSI colour.
+.SH STATE
+History is stored under STEF_STATE_DIR, otherwise XDG_STATE_HOME/stef,
+otherwise ~/.local/state/stef.
+.PP
+Match payloads are encrypted with ChaCha20-Poly1305. When a locally usable PGP
+recipient is discovered in SOPS metadata, the random master key can be wrapped
+with GPG as history.key.gpg. Otherwise a mode-0600 local history.key is used.
+.SH ENVIRONMENT
+.TP
+.B STEF_STATE_DIR
+History directory override.
+.TP
+.B STEF_HISTORY_GPG_RECIPIENT
+Comma-separated GPG recipient selectors.
+.TP
+.B STEF_SOPS
+SOPS executable override.
+.TP
+.B STEF_GPG
+GPG executable override.
+.TP
+.B NO_COLOR
+Disable automatic terminal colour.
+.SH EXIT STATUS
+0 if a match was found, 1 if no match was found, 2 on error.
+.SH SEE ALSO
+.BR grep (1),
+.BR rg (1),
+.BR sops (1),
+.BR gpg (1)
+.SH AUTHOR
+The stef project.

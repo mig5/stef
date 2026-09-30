@@ -1,0 +1,99 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: docker
+
+    container:
+      image: docker.io/library/debian:13
+
+    steps:
+      - name: Install system dependencies
+        run: |
+          set -eux
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            age \
+            build-essential \
+            ca-certificates \
+            curl \
+            git \
+            nodejs \
+            pkg-config \
+            rustup
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: |
+          set -eux
+          rustup set profile minimal
+          rustup toolchain install 1.88.0 --component rustfmt --component clippy
+          rustup default 1.88.0
+          rustc --version
+          cargo --version
+          cargo fmt --version
+          cargo clippy --version
+
+      - name: Install sops
+        run: |
+          set -eux
+          case "$(uname -m)" in
+            x86_64) sops_arch=amd64 ;;
+            aarch64|arm64) sops_arch=arm64 ;;
+            *) echo "Unsupported architecture for sops: $(uname -m)" >&2; exit 1 ;;
+          esac
+          curl -fsSL -o /usr/local/bin/sops \
+            "https://github.com/getsops/sops/releases/download/v3.13.1/sops-v3.13.1.linux.${sops_arch}"
+          chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Run checks and tests
+        run: |
+          set -eux
+          make check
+
+      - name: Build release binary
+        run: |
+          set -eux
+          cargo build --release --locked
+          ./target/release/stef --version
+
+      - name: Smoke-test grep-style recursion semantics
+        run: |
+          set -eux
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          mkdir -p "$tmpdir/nested"
+          printf 'needle\n' > "$tmpdir/nested/example.txt"
+
+          printf 'needle\n' | ./target/release/stef --no-history needle | grep -F needle
+
+          set +e
+          ./target/release/stef --no-history needle "$tmpdir" >"$tmpdir/out" 2>"$tmpdir/err"
+          rc=$?
+          set -e
+          test "$rc" -eq 2
+          grep -F 'use -r or -R to recurse' "$tmpdir/err"
+
+          ./target/release/stef --no-history -r needle "$tmpdir" | grep -F needle
+
+      - name: Smoke-test SOPS decryption
+        run: |
+          set -eux
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          age-keygen -o "$tmpdir/age.key"
+          recipient="$(age-keygen -y "$tmpdir/age.key")"
+          printf 'service: forgejo\nsecret_value: CI_TEST_SECRET_12345\n' > "$tmpdir/plain.yml"
+          sops --encrypt --age "$recipient" "$tmpdir/plain.yml" > "$tmpdir/secret.sops.yml"
+          rm "$tmpdir/plain.yml"
+          SOPS_AGE_KEY_FILE="$tmpdir/age.key" \
+            ./target/release/stef --no-history CI_TEST_SECRET_12345 "$tmpdir/secret.sops.yml" \
+            | grep -F CI_TEST_SECRET_12345

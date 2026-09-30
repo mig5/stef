@@ -1,0 +1,142 @@
+name: Build packages
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-and-install:
+    runs-on: docker
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian13
+            image: docker.io/library/debian:13
+            package: deb
+          - distro: almalinux9
+            image: docker.io/library/almalinux:9
+            package: rpm
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Install system dependencies
+        env:
+          DISTRO: ${{ matrix.distro }}
+        run: |
+          set -eux
+          case "$DISTRO" in
+            debian13)
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                build-essential \
+                ca-certificates \
+                curl \
+                git \
+                nodejs \
+                pkg-config \
+                rustup
+              ;;
+            almalinux9)
+              dnf -y install \
+                bash \
+                ca-certificates \
+                curl-minimal \
+                gcc \
+                gcc-c++ \
+                git \
+                make \
+                nodejs \
+                pkgconf-pkg-config \
+                rpm
+              ;;
+            *)
+              echo "Unsupported CI distro: $DISTRO" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        env:
+          DISTRO: ${{ matrix.distro }}
+        run: |
+          set -eux
+          if [ "$DISTRO" = debian13 ]; then
+            rustup set profile minimal
+            rustup toolchain install 1.88.0 --component rustfmt --component clippy
+            rustup default 1.88.0
+          else
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain 1.88.0 \
+                --component rustfmt --component clippy
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustc --version
+          cargo --version
+
+      - name: Run checks
+        run: |
+          set -eux
+          export PATH="$HOME/.cargo/bin:$PATH"
+          make check
+
+      - name: Build and package
+        env:
+          DISTRO: ${{ matrix.distro }}
+          PACKAGE_KIND: ${{ matrix.package }}
+        run: |
+          set -eux
+          export PATH="$HOME/.cargo/bin:$PATH"
+          cargo build --release --locked
+
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)"
+          host="$(rustc -vV | awk '/^host:/ { print $2 }')"
+          mkdir -p dist
+          cp target/release/stef "dist/stef-${version}-${host}"
+
+          case "$PACKAGE_KIND" in
+            deb)
+              cargo install cargo-deb --version 3.7.0 --locked
+              cargo deb --no-build
+              cp target/debian/*.deb dist/
+              ;;
+            rpm)
+              cargo install cargo-generate-rpm --version 0.21.0 --locked
+              cargo generate-rpm
+              cp target/generate-rpm/*.rpm dist/
+              ;;
+          esac
+
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          ls -lh dist/
+
+      - name: Install Debian package
+        if: ${{ matrix.package == 'deb' }}
+        run: |
+          set -eux
+          apt-get install -y ./dist/*.deb
+          command -v stef
+          stef --version
+          dpkg-query -W stef
+
+      - name: Install RPM package
+        if: ${{ matrix.package == 'rpm' }}
+        run: |
+          set -eux
+          dnf -y install ./dist/*.rpm
+          command -v stef
+          stef --version
+          rpm -q stef
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: stef-${{ matrix.distro }}
+          path: dist/
