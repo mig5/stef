@@ -1,5 +1,9 @@
 # stef
 
+<div align="center">
+  <img src="https://git.mig5.net/mig5/stef/raw/branch/main/stef.svg" alt="Stef logo" width="240" />
+</div>
+
 `stef` is a standalone grep-style search tool for ordinary files **and SOPS-encrypted files**, with encrypted history that can answer a second question grep normally cannot:
 
 > **What used to match, but does not match now?**
@@ -30,6 +34,22 @@ and searches the decrypted stdout stream. Decrypted file contents are never writ
 
 ## Installation
 
+### From my apt repo
+
+```bash
+sudo mkdir -p /usr/share/keyrings
+curl -fsSL https://mig5.net/static/mig5.asc | sudo gpg --dearmor -o /usr/share/keyrings/mig5.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/mig5.gpg] https://apt.mig5.net $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/mig5.list
+sudo apt update
+sudo apt install stef
+```
+
+### From crates.io
+
+```bash
+cargo install stef
+```
+
 ### From source
 
 You need **Rust 1.88 or newer** for this release. The ripgrep-core crate versions used by stef are pinned in `Cargo.toml` so a future `ignore` update cannot silently raise that requirement. A distro-provided Rust 1.50-era toolchain is too old even to parse the manifest.
@@ -48,8 +68,6 @@ rustc --version
 cargo --version
 ```
 
-On Debian 13 or another system whose packaged Rust is older, rustup is the simplest development-toolchain option:
-
 From a stef source checkout:
 
 ```sh
@@ -65,56 +83,7 @@ cargo install --path .
 
 Plaintext searching then needs no other program.
 
-To search SOPS-encrypted files, install [`sops`](https://github.com/getsops/sops) and configure whichever key backend those files already use. GnuPG is needed only for PGP-backed SOPS decryption or GPG-wrapped stef history.
-
-### Debian package
-
-The repository contains `cargo-deb` metadata:
-
-```sh
-cargo install cargo-deb
-cargo build --release
-cargo deb --no-build
-sudo apt install ./target/debian/stef_0.1.0_*.deb
-```
-
-### RPM package
-
-The repository also contains `cargo-generate-rpm` metadata:
-
-```sh
-cargo install cargo-generate-rpm
-cargo build --release
-cargo generate-rpm
-sudo rpm -Uvh target/generate-rpm/stef-0.1.0-*.rpm
-```
-
-Or build both formats, the optimized standalone binary, and checksums:
-
-```sh
-./packaging/build-packages.sh
-```
-
-The helper installs the pinned packaging tools (`cargo-deb` 3.7.0 and `cargo-generate-rpm` 0.21.0) automatically when the required versions are missing. Artifacts are copied into `dist/`.
-
-### Full release and crates.io publish
-
-`release.sh` is the complete local release path. It refuses a dirty Git tree by default, runs the toolchain preflight, rustfmt, Clippy and tests, builds the optimized binary, DEB and RPM, validates the crates.io package with a dry-run, and only then performs the irreversible crates.io upload:
-
-```sh
-export CARGO_REGISTRY_TOKEN='your-crates-io-token'
-./release.sh
-```
-
-Cargo's normal credential configuration also works, so the token does not need to be placed in the script. To exercise the entire release pipeline without uploading anything:
-
-```sh
-./release.sh --no-publish
-```
-
-The resulting `dist/` contains the native binary named with its host target triple, the `.deb`, the `.rpm`, the `.crate` source package, and `SHA256SUMS`. Published crates.io versions cannot be replaced, so the actual `cargo publish` step deliberately comes last.
-
-`sops` and `gpg` are intentionally **not hard package dependencies**. A user who wants stef only as a fast plaintext search tool should not have to install either.
+To search SOPS-encrypted files, install [`sops`](https://github.com/getsops/sops) separately, and configure whichever key backend those files already use. GnuPG is needed only for PGP-backed SOPS decryption or GPG-wrapped stef history.
 
 ## Quick start
 
@@ -715,44 +684,3 @@ The SOPS child process inherits the user's normal SOPS/GPG/age/KMS environment. 
 | `STEF_GPG` | Override the `gpg` executable. |
 | `NO_COLOR` | Disable automatic ANSI colour. |
 | `XDG_STATE_HOME` | Standard fallback base for history. |
-
-## Forgejo Actions
-
-Two Forgejo workflows are included under `.forgejo/workflows/`:
-
-- **`test.yml`** runs on `docker.io/library/debian:13`, installs Debian's `rustup`, selects Rust 1.88.0, runs `make check`, builds the release binary, verifies the opt-in `-r`/`-R` recursion behaviour, and performs a real SOPS+age decrypt/search smoke test.
-- **`build.yml`** builds and install-tests a DEB natively on Debian 13 and an RPM natively on AlmaLinux 9. Building each package on its target distribution avoids accidentally shipping an AlmaLinux RPM containing a binary linked against a newer Debian glibc. Each job uploads its native binary plus package as a Forgejo artifact.
-
-The workflows use `runs-on: docker`, the same Debian/AlmaLinux container names as the Enroll project, and `actions/checkout@v4`. Artifact upload deliberately uses `actions/upload-artifact@v3` for Forgejo compatibility.
-
-## Packaging and development
-
-Useful targets:
-
-```sh
-make build
-make test
-make check
-make release
-make deb
-make rpm
-make packages
-```
-
-`make check` runs formatting, Clippy and tests. `make packages` produces DEB/RPM artifacts after a release build.
-
-Project layout:
-
-```text
-src/cli.rs       CLI and grep/ripgrep compatibility parsing
-src/search.rs    native matcher/searcher/traversal integration
-src/sops.rs      SOPS detection, PGP metadata discovery and decryption pipe
-src/history.rs   encrypted SQLite history and GPG-wrapped master key
-src/diffing.rs   previous/window comparison logic
-src/render.rs    normal, JSON and red/green diff output
-src/model.rs     search/history data structures
-```
-
-## License
-
-GPL 3.0 or later.

@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="stef logo: steampunk goggles with a keyhole and padlock in the lenses">
+  <title>stef — steampunk goggles</title>
+  <defs>
+    <linearGradient id="sBrass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F5D689"/>
+      <stop offset="0.55" stop-color="#D9A441"/>
+      <stop offset="1" stop-color="#8A5A1E"/>
+    </linearGradient>
+    <linearGradient id="sGlass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2A464E"/>
+      <stop offset="0.55" stop-color="#13222A"/>
+      <stop offset="1" stop-color="#0C1418"/>
+    </linearGradient>
+    <linearGradient id="sLeather" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5A3A24"/>
+      <stop offset="1" stop-color="#38220F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Strap: curved leather band behind the goggles -->
+  <path d="M0 244 C120 320 392 320 512 244" fill="none" stroke="url(#sLeather)" stroke-width="42" stroke-linecap="round"/>
+  <path d="M0 254 C120 328 392 328 512 254" fill="none" stroke="#C9974F" stroke-width="2.5" stroke-dasharray="9 7" opacity="0.7"/>
+
+  <!-- Strap end caps -->
+  <rect x="10" y="222" width="26" height="42" rx="6" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="4"/>
+  <rect x="476" y="222" width="26" height="42" rx="6" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="4"/>
+
+  <!-- Small brass gear at the crown -->
+  <g>
+    <g fill="url(#sBrass)" stroke="#5f3c12" stroke-width="3">
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(0 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(45 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(90 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(135 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(180 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(225 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(270 256 138)"/>
+      <rect x="251" y="112" width="10" height="14" rx="2" transform="rotate(315 256 138)"/>
+    </g>
+    <circle cx="256" cy="138" r="17" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="4"/>
+    <circle cx="256" cy="138" r="6" fill="#38220F"/>
+  </g>
+
+  <!-- Bridge -->
+  <rect x="236" y="238" width="40" height="44" rx="6" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="4"/>
+  <circle cx="248" cy="260" r="4" fill="#F5D689" stroke="#5f3c12" stroke-width="1.5"/>
+  <circle cx="264" cy="260" r="4" fill="#F5D689" stroke="#5f3c12" stroke-width="1.5"/>
+
+  <!-- Left lens -->
+  <g>
+    <circle cx="170" cy="260" r="108" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="6"/>
+    <circle cx="170" cy="260" r="94" fill="none" stroke="#B4762A" stroke-width="10" stroke-dasharray="10 7"/>
+    <circle cx="170" cy="260" r="82" fill="url(#sGlass)" stroke="#5f3c12" stroke-width="5"/>
+    <!-- rivets -->
+    <g fill="#F5D689" stroke="#5f3c12" stroke-width="2">
+      <circle cx="170" cy="160" r="5.5" transform="rotate(22.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(67.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(112.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(157.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(202.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(247.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(292.5 170 260)"/>
+      <circle cx="170" cy="160" r="5.5" transform="rotate(337.5 170 260)"/>
+    </g>
+    <!-- rim highlight -->
+    <path d="M78 196 A108 108 0 0 1 170 152" fill="none" stroke="#FBE7A8" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+    <!-- lens shine -->
+    <ellipse cx="130" cy="212" rx="26" ry="46" transform="rotate(-35 130 212)" fill="#FFFFFF" opacity="0.10"/>
+    <!-- keyhole symbol -->
+    <g fill="#E8C56A" stroke="#5f3c12" stroke-width="4" stroke-linejoin="round">
+      <circle cx="170" cy="248" r="17"/>
+      <path d="M161 260 h18 l10 42 h-38 z"/>
+    </g>
+  </g>
+
+  <!-- Right lens -->
+  <g>
+    <circle cx="342" cy="260" r="108" fill="url(#sBrass)" stroke="#5f3c12" stroke-width="6"/>
+    <circle cx="342" cy="260" r="94" fill="none" stroke="#B4762A" stroke-width="10" stroke-dasharray="10 7"/>
+    <circle cx="342" cy="260" r="82" fill="url(#sGlass)" stroke="#5f3c12" stroke-width="5"/>
+    <!-- rivets -->
+    <g fill="#F5D689" stroke="#5f3c12" stroke-width="2">
+      <circle cx="342" cy="160" r="5.5" transform="rotate(22.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(67.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(112.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(157.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(202.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(247.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(292.5 342 260)"/>
+      <circle cx="342" cy="160" r="5.5" transform="rotate(337.5 342 260)"/>
+    </g>
+    <!-- rim highlight -->
+    <path d="M250 196 A108 108 0 0 1 342 152" fill="none" stroke="#FBE7A8" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+    <!-- lens shine -->
+    <ellipse cx="302" cy="212" rx="26" ry="46" transform="rotate(-35 302 212)" fill="#FFFFFF" opacity="0.10"/>
+    <!-- padlock symbol -->
+    <path d="M324 252 v-12 a18 18 0 0 1 36 0 v12" fill="none" stroke="#E8C56A" stroke-width="10" stroke-linecap="round"/>
+    <rect x="316" y="252" width="52" height="46" rx="8" fill="#E8C56A" stroke="#5f3c12" stroke-width="4"/>
+    <circle cx="342" cy="270" r="6" fill="#5f3c12"/>
+    <rect x="339" y="272" width="6" height="12" rx="2" fill="#5f3c12"/>
+  </g>
+</svg>
