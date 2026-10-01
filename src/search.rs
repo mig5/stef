@@ -7,8 +7,8 @@ use grep_regex::{RegexMatcher, RegexMatcherBuilder};
 use grep_searcher::{
     BinaryDetection, Encoding, Searcher, SearcherBuilder, Sink, SinkContext, SinkMatch,
 };
-use ignore::WalkBuilder;
 use ignore::Match;
+use ignore::WalkBuilder;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::OverrideBuilder;
 use ignore::types::TypesBuilder;
@@ -84,7 +84,10 @@ pub fn run_search(cli: &Cli, invocation: &SearchInvocation) -> Result<SearchResu
         result.files.push(sink.finish());
     }
 
-    let fs_paths: Vec<PathBuf> = drop_ignored_roots(cli, paths.into_iter().filter(|p| p != Path::new("-")).collect());
+    let fs_paths: Vec<PathBuf> = drop_ignored_roots(
+        cli,
+        paths.into_iter().filter(|p| p != Path::new("-")).collect(),
+    );
     if !cli.recursive_requested() {
         for path in &fs_paths {
             if path.is_dir() {
@@ -199,10 +202,7 @@ fn drop_ignored_roots(cli: &Cli, paths: Vec<PathBuf>) -> Vec<PathBuf> {
     if skipped.is_empty() {
         return paths;
     }
-    paths
-        .into_iter()
-        .filter(|p| !skipped.contains(p))
-        .collect()
+    paths.into_iter().filter(|p| !skipped.contains(p)).collect()
 }
 
 fn root_matches_ancestor_ignores(root: &Path) -> bool {

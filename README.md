@@ -253,7 +253,7 @@ stef -r -f interesting-patterns.txt logs/
 stef -r -U 'BEGIN.*END' generated/
 ```
 
-The default regex engine is Rust's regex engine through ripgrep's `grep-regex` crate. It provides Unicode-aware regular expressions and linear-time searching for its supported syntax. PCRE2-only constructs such as look-around and backreferences are not part of stef 0.1.0; see **Differences from the `rg` CLI** below.
+The default regex engine is Rust's regex engine through ripgrep's `grep-regex` crate. It provides Unicode-aware regular expressions and linear-time searching for its supported syntax. PCRE2-only constructs such as look-around and backreferences are not part of stef; see **Differences from the `rg` CLI** below.
 
 ### Context and searcher controls
 
@@ -628,10 +628,6 @@ where the tree might contain hundreds of ordinary files plus several encrypted S
 
 ## Relationship to ripgrep
 
-The first stef prototype drove the `rg` executable as a subprocess. That gave excellent searching immediately, but it also meant asking users to install a second search program and created CLI conflicts—most notably GNU grep's `-r` means recursive while ripgrep's `-r` means replacement text.
-
-0.1.0 removes that runtime dependency.
-
 The native implementation embeds reusable crates from the ripgrep project:
 
 - **`grep-regex`** — construction of the default regex matcher;
@@ -643,7 +639,7 @@ So stef is not reimplementing a regex engine or filesystem walker from scratch, 
 
 ## Differences from the `rg` CLI
 
-The crates expose the underlying machinery; they do not automatically provide every option in ripgrep's command-line program. stef 0.1.0 deliberately implements the subset that fits its purpose and documents it above.
+The crates expose the underlying machinery; they do not automatically provide every option in ripgrep's command-line program. stef deliberately implements the subset that fits its purpose and documents it above.
 
 Notable `rg` CLI features **not** currently implemented include:
 

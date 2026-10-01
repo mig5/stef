@@ -274,11 +274,7 @@ mod tests {
         unsafe { std::env::set_var("STEF_SOPS", &script) };
         let mut reader = spawn_decrypt(&secret).unwrap();
         let mut out = String::new();
-        reader
-            .stdout()
-            .unwrap()
-            .read_to_string(&mut out)
-            .unwrap();
+        reader.stdout().unwrap().read_to_string(&mut out).unwrap();
         reader.wait().unwrap();
         unsafe { std::env::remove_var("STEF_SOPS") };
         assert_eq!(out, "plaintext\n");
