@@ -8,6 +8,8 @@ use grep_searcher::{
     BinaryDetection, Encoding, Searcher, SearcherBuilder, Sink, SinkContext, SinkMatch,
 };
 use ignore::WalkBuilder;
+use ignore::Match;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::OverrideBuilder;
 use ignore::types::TypesBuilder;
 use std::io;
@@ -34,7 +36,7 @@ pub fn list_types(cli: &Cli) -> Result<Vec<String>> {
 
 pub fn list_files(cli: &Cli, invocation: &SearchInvocation) -> Result<(Vec<String>, Vec<String>)> {
     let mut errors = Vec::new();
-    let paths = normalized_paths(invocation);
+    let paths = drop_ignored_roots(cli, normalized_paths(invocation));
     if !cli.recursive_requested() {
         for path in &paths {
             if path != Path::new("-") && path.is_dir() {
@@ -82,7 +84,7 @@ pub fn run_search(cli: &Cli, invocation: &SearchInvocation) -> Result<SearchResu
         result.files.push(sink.finish());
     }
 
-    let fs_paths: Vec<PathBuf> = paths.into_iter().filter(|p| p != Path::new("-")).collect();
+    let fs_paths: Vec<PathBuf> = drop_ignored_roots(cli, paths.into_iter().filter(|p| p != Path::new("-")).collect());
     if !cli.recursive_requested() {
         for path in &fs_paths {
             if path.is_dir() {
@@ -185,6 +187,60 @@ fn normalized_paths(invocation: &SearchInvocation) -> Vec<PathBuf> {
     }
 }
 
+fn drop_ignored_roots(cli: &Cli, paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    if cli.effective_no_ignore() || cli.no_ignore_parent {
+        return paths;
+    }
+    let skipped: Vec<PathBuf> = paths
+        .iter()
+        .filter(|p| root_matches_ancestor_ignores(p))
+        .cloned()
+        .collect();
+    if skipped.is_empty() {
+        return paths;
+    }
+    paths
+        .into_iter()
+        .filter(|p| !skipped.contains(p))
+        .collect()
+}
+
+fn root_matches_ancestor_ignores(root: &Path) -> bool {
+    let abs = match root.canonicalize() {
+        Ok(abs) => abs,
+        Err(_) => return false,
+    };
+    let is_dir = root.is_dir();
+    let mut current = abs.parent();
+    while let Some(dir) = current {
+        for name in [".stefignore", ".ignore"] {
+            let file = dir.join(name);
+            if !file.is_file() {
+                continue;
+            }
+            let Some(matcher) = ancestor_matcher(dir, &file) else {
+                continue;
+            };
+            match matcher.matched(&abs, is_dir) {
+                Match::Ignore(_) => return true,
+                Match::Whitelist(_) => return false,
+                Match::None => {}
+            }
+        }
+        current = dir.parent();
+    }
+    false
+}
+
+fn ancestor_matcher(dir: &Path, file: &Path) -> Option<Gitignore> {
+    let contents = std::fs::read_to_string(file).ok()?;
+    let mut builder = GitignoreBuilder::new(dir);
+    for line in contents.lines() {
+        let _ = builder.add_line(None, line);
+    }
+    builder.build().ok()
+}
+
 fn build_matcher(cli: &Cli, patterns: &[String]) -> Result<RegexMatcher> {
     let mut builder = RegexMatcherBuilder::new();
     builder
@@ -254,7 +310,7 @@ fn build_walker(cli: &Cli, paths: &[PathBuf]) -> Result<WalkBuilder> {
     for path in paths.iter().skip(1) {
         walk.add(path);
     }
-    walk.add_custom_ignore_filename(".rgignore");
+    walk.add_custom_ignore_filename(".stefignore");
     walk.hidden(!cli.effective_hidden());
     if cli.effective_no_ignore() {
         walk.ignore(false)

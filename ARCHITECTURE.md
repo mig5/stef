@@ -497,14 +497,18 @@ expressed as `None`.
 ```rust
 let mut walk = WalkBuilder::new(first);
 for path in paths.iter().skip(1) { walk.add(path); }   // additional roots
-walk.add_custom_ignore_filename(".rgignore");
+walk.add_custom_ignore_filename(".stefignore");
 walk.hidden(!cli.effective_hidden());
 ```
 
 The walker handles recursion, symlink policy (`follow_links`), `max_depth`,
-`.gitignore`/`.ignore`/global git ignores, `.rgignore`, size caps, and
+`.gitignore`/`.ignore`/global git ignores, `.stefignore`, size caps, and
 same-filesystem constraints. The `--no-ignore-*` flags selectively disable each
 ignore source (note the inversions: `walk.git_ignore(!cli.no_ignore_vcs)`).
+
+Directory operands that an ancestor `.stefignore` or `.ignore` file matches are
+dropped before the walk starts (`drop_ignored_roots`), mirroring what the ignore
+crate does for entries inside a root but not for the root itself.
 
 Globs and file types:
 

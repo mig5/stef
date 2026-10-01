@@ -22,7 +22,7 @@ and searches the decrypted stdout stream. Decrypted file contents are never writ
 
 - one native `stef` executable; no `rg`, Python, pipx, or Poetry runtime dependency;
 - searches explicit files directly and recurses into directories only with `-r` or `-R`;
-- respects `.gitignore`, `.ignore`, `.git/info/exclude`, global Git ignores and `.rgignore`;
+- respects `.gitignore`, `.ignore`, `.git/info/exclude`, global Git ignores and `.stefignore`;
 - familiar grep/ripgrep-style regex, fixed-string, case, word, line, context, glob and file-type controls;
 - transparent SOPS detection and decryption inside mixed plaintext/encrypted directory trees;
 - exact matching text highlighted in green on terminals;
@@ -292,7 +292,9 @@ By default stef:
 - honours `.gitignore`;
 - honours `.git/info/exclude`;
 - honours the user's global Git ignore file;
-- honours `.rgignore` as a high-precedence custom ignore file;
+- honours `.stefignore` as a high-precedence custom ignore file;
+- skips directory operands that an ancestor `.stefignore` or `.ignore` file matches, so
+  `stef -r pattern repo/*` respects a repo-root `.stefignore` without needing `.` instead of `*`;
 - does not follow symbolic links.
 
 | Flag | Meaning |

@@ -9,6 +9,7 @@ use std::process::{ChildStdout, Command, Stdio};
 use std::sync::OnceLock;
 
 const PROBE_CHUNK: usize = 256 * 1024;
+const STDERR_CAPTURE_LIMIT: usize = 256 * 1024;
 const DEFAULT_GLOBS: &[&str] = &[
     "*.yaml", "*.yml", "*.json", "*.env", ".env", "*.env.*", "*.ini", "*.sops", "*.sops.*",
 ];
@@ -24,6 +25,7 @@ pub struct DecryptReader {
     child: std::process::Child,
     stdout: Option<ChildStdout>,
     path: PathBuf,
+    stderr: Option<std::thread::JoinHandle<Vec<u8>>>,
 }
 
 impl DecryptReader {
@@ -38,11 +40,22 @@ impl DecryptReader {
             .child
             .wait()
             .with_context(|| format!("waiting for SOPS decrypt of {}", self.path.display()))?;
+        let stderr = self
+            .stderr
+            .take()
+            .and_then(|handle| handle.join().ok())
+            .unwrap_or_default();
         if !status.success() {
+            let detail = String::from_utf8_lossy(&stderr).trim().to_owned();
             bail!(
-                "sops --decrypt failed for {} with {}",
+                "sops --decrypt failed for {} with {}{}",
                 self.path.display(),
-                status
+                status,
+                if detail.is_empty() {
+                    String::new()
+                } else {
+                    format!(":\n{detail}")
+                }
             );
         }
         Ok(())
@@ -156,7 +169,7 @@ pub fn spawn_decrypt(path: &Path) -> Result<DecryptReader> {
         .arg(path)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped())
         .spawn()
         .with_context(|| {
             format!(
@@ -169,10 +182,29 @@ pub fn spawn_decrypt(path: &Path) -> Result<DecryptReader> {
         .stdout
         .take()
         .context("failed to capture SOPS stdout")?;
+    let stderr = child.stderr.take().map(drain_stderr);
     Ok(DecryptReader {
         child,
         stdout: Some(stdout),
         path: path.to_path_buf(),
+        stderr,
+    })
+}
+
+fn drain_stderr(mut stderr: std::process::ChildStderr) -> std::thread::JoinHandle<Vec<u8>> {
+    std::thread::spawn(move || {
+        let mut captured = Vec::new();
+        let mut buf = [0u8; 8192];
+        loop {
+            match stderr.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    let room = STDERR_CAPTURE_LIMIT.saturating_sub(captured.len());
+                    captured.extend_from_slice(&buf[..n.min(room)]);
+                }
+            }
+        }
+        captured
     })
 }
 
@@ -201,5 +233,54 @@ mod tests {
         let detector = SopsDetector::new(&[]).unwrap();
         assert!(detector.probe(&encrypted).unwrap().encrypted);
         assert!(!detector.probe(&plain).unwrap().encrypted);
+    }
+
+    #[cfg(unix)]
+    fn write_executable(path: &Path, body: &str) {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::write(path, body).unwrap();
+        let mut perms = std::fs::metadata(path).unwrap().permissions();
+        perms.set_mode(perms.mode() | 0o111);
+        std::fs::set_permissions(path, perms).unwrap();
+    }
+
+    #[cfg(unix)]
+    static STEF_SOPS_ENV: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[cfg(unix)]
+    #[test]
+    fn decrypt_failure_includes_captured_stderr() {
+        let _guard = STEF_SOPS_ENV.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("fake-sops");
+        write_executable(&script, "#!/bin/sh\necho boom >&2\nexit 3\n");
+        let secret = dir.path().join("secret.yaml");
+        std::fs::write(&secret, "password: ENC[AES256_GCM,data:x]\n").unwrap();
+        unsafe { std::env::set_var("STEF_SOPS", &script) };
+        let err = spawn_decrypt(&secret).unwrap().wait().unwrap_err();
+        unsafe { std::env::remove_var("STEF_SOPS") };
+        assert!(err.to_string().contains("boom"), "{err:#}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn decrypt_success_discards_stderr() {
+        let _guard = STEF_SOPS_ENV.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("fake-sops");
+        write_executable(&script, "#!/bin/sh\necho noisy >&2\necho plaintext\n");
+        let secret = dir.path().join("secret.yaml");
+        std::fs::write(&secret, "password: ENC[AES256_GCM,data:x]\n").unwrap();
+        unsafe { std::env::set_var("STEF_SOPS", &script) };
+        let mut reader = spawn_decrypt(&secret).unwrap();
+        let mut out = String::new();
+        reader
+            .stdout()
+            .unwrap()
+            .read_to_string(&mut out)
+            .unwrap();
+        reader.wait().unwrap();
+        unsafe { std::env::remove_var("STEF_SOPS") };
+        assert_eq!(out, "plaintext\n");
     }
 }
